@@ -307,6 +307,23 @@ function initMap() {
 
     userMarker.bindPopup('Your Location');
 
+    // Add wrapped copies of user marker for world map wrap
+    userMarker.wrappedMarkers = [];
+    [-360, 360].forEach(offset => {
+        const wrappedUserMarker = L.circleMarker([0, offset], {
+            radius: 10,
+            fillColor: '#00ff41',
+            color: '#00ff41',
+            weight: 3,
+            fillOpacity: 0.9,
+            className: 'user-location',
+            interactive: false
+        }).addTo(map);
+        wrappedUserMarker.bindPopup('Your Location');
+        wrappedUserMarker.lonOffset = offset;
+        userMarker.wrappedMarkers.push(wrappedUserMarker);
+    });
+
     // Store reference
     window.userMarker = userMarker;
 }
@@ -601,6 +618,23 @@ function updateSatellites() {
             });
             // Update popup content
             marker.getPopup().setContent(popupHTML);
+
+            // Update wrapped markers (for world wrap display)
+            if (marker.wrappedMarkers) {
+                marker.wrappedMarkers.forEach(wrappedMarker => {
+                    const offset = wrappedMarker.lonOffset;
+                    wrappedMarker.setLatLng([pos.latitude, pos.longitude + offset]);
+                    wrappedMarker.setStyle({
+                        radius: isConnected ? 10 : inView ? 6 : 4,
+                        fillColor: color,
+                        color: isConnected ? '#00ff41' : '#fff',
+                        weight: isConnected ? 2 : 1,
+                        fillOpacity: isConnected ? 1 : 0.9,
+                        className: isConnected ? 'connected-sat' : ''
+                    });
+                    wrappedMarker.getPopup().setContent(popupHTML);
+                });
+            }
         } else {
             // Create new marker
             marker = L.circleMarker([pos.latitude, pos.longitude], {
@@ -626,6 +660,34 @@ function updateSatellites() {
 
             // Store PRN on marker for identification
             marker.satPRN = sat.prn;
+
+            // Create wrapped copies for world map wrap (±360° longitude)
+            marker.wrappedMarkers = [];
+            [-360, 360].forEach(offset => {
+                const wrappedMarker = L.circleMarker([pos.latitude, pos.longitude + offset], {
+                    radius: isConnected ? 10 : inView ? 6 : 4,
+                    fillColor: color,
+                    color: isConnected ? '#00ff41' : '#fff',
+                    weight: isConnected ? 2 : 1,
+                    fillOpacity: isConnected ? 1 : 0.9,
+                    className: isConnected ? 'connected-sat' : ''
+                }).addTo(map);
+
+                wrappedMarker.bindPopup(popupHTML);
+                wrappedMarker.lonOffset = offset;
+
+                // Track popup open/close for wrapped markers
+                wrappedMarker.on('popupopen', () => {
+                    openPopupPRN = sat.prn;
+                });
+                wrappedMarker.on('popupclose', () => {
+                    if (openPopupPRN === sat.prn) {
+                        openPopupPRN = null;
+                    }
+                });
+
+                marker.wrappedMarkers.push(wrappedMarker);
+            });
 
             // Store reference
             satelliteCircleMarkers[sat.prn] = marker;
@@ -771,6 +833,16 @@ function focusSatellite(prn) {
     console.log(`Focused on PRN ${prn} at position:`, pos.latitude.toFixed(4), pos.longitude.toFixed(4));
 }
 
+// Helper function to update user marker and wrapped copies
+function updateUserMarkerPosition(lat, lon) {
+    window.userMarker.setLatLng([lat, lon]);
+    if (window.userMarker.wrappedMarkers) {
+        window.userMarker.wrappedMarkers.forEach(wrappedMarker => {
+            wrappedMarker.setLatLng([lat, lon + wrappedMarker.lonOffset]);
+        });
+    }
+}
+
 // Get user location
 function getLocation() {
     if (navigator.geolocation) {
@@ -783,7 +855,7 @@ function getLocation() {
 
             // Center on location
             map.setView([userLocation.lat, userLocation.lon], 8);
-            window.userMarker.setLatLng([userLocation.lat, userLocation.lon]);
+            updateUserMarkerPosition(userLocation.lat, userLocation.lon);
 
             updateSatellites();
         });
@@ -1076,7 +1148,7 @@ function parseGGA(sentence) {
         document.getElementById('lat').value = lat.toFixed(6);
         document.getElementById('lon').value = lon.toFixed(6);
 
-        window.userMarker.setLatLng([lat, lon]);
+        updateUserMarkerPosition(lat, lon);
 
         // Only auto-center on first fix, then let user control the view
         if (firstGPSFix) {
@@ -1110,7 +1182,7 @@ function parseRMC(sentence) {
         document.getElementById('lat').value = lat.toFixed(6);
         document.getElementById('lon').value = lon.toFixed(6);
 
-        window.userMarker.setLatLng([lat, lon]);
+        updateUserMarkerPosition(lat, lon);
 
         // Only auto-center on first fix
         if (firstGPSFix) {
@@ -1221,13 +1293,13 @@ The app will auto-detect baud rate (9600, 4800, 38400, 57600, 115200)
 // Update location from inputs
 document.getElementById('lat').addEventListener('change', (e) => {
     userLocation.lat = parseFloat(e.target.value);
-    window.userMarker.setLatLng([userLocation.lat, userLocation.lon]);
+    updateUserMarkerPosition(userLocation.lat, userLocation.lon);
     updateSatellites();
 });
 
 document.getElementById('lon').addEventListener('change', (e) => {
     userLocation.lon = parseFloat(e.target.value);
-    window.userMarker.setLatLng([userLocation.lat, userLocation.lon]);
+    updateUserMarkerPosition(userLocation.lat, userLocation.lon);
     updateSatellites();
 });
 
