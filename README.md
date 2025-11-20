@@ -8,6 +8,8 @@ A real-time visualization tool to see which GPS satellites you're actually conne
 
 🌐 **[Live Demo](https://ringmast4r.github.io/GNSS/)**
 
+![GNSS Satellite Tracker Screenshot](GNSS.PNG)
+
 ## Why This Exists
 
 I wanted to create an educational tool to visualize which satellites my GPS modules connect with - which ones are overhead, their signal strength, and which are actively being used for positioning. This makes the invisible world of GPS visible and helps understand how GPS positioning actually works.
