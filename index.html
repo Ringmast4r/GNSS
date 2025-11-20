@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satellite Tracker with GPS Integration</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e27;
+            color: #fff;
+        }
+
+        #header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 10px 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.2em;
+            font-weight: 500;
+        }
+
+        #controls {
+            background: #1a1f3a;
+            padding: 10px 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: nowrap;
+            align-items: center;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        #controls::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        #controls::-webkit-scrollbar-track {
+            background: #0a0e27;
+        }
+
+        #controls::-webkit-scrollbar-thumb {
+            background: #2d3561;
+            border-radius: 3px;
+        }
+
+        #sat-bar {
+            background: rgba(10, 14, 39, 0.9);
+            padding: 8px 15px;
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            border-top: 1px solid #2d3561;
+            white-space: nowrap;
+        }
+
+        #sat-bar::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        #sat-bar::-webkit-scrollbar-track {
+            background: #0a0e27;
+        }
+
+        #sat-bar::-webkit-scrollbar-thumb {
+            background: #2d3561;
+            border-radius: 3px;
+        }
+
+        .sat-btn {
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 2px solid #2d3561;
+            background: #1a1f3a;
+            color: #8b92b8;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .sat-btn:hover {
+            transform: translateY(-2px);
+            border-color: #667eea;
+        }
+
+        .sat-btn.connected {
+            border-color: #00ff41;
+            background: rgba(0, 255, 65, 0.15);
+            color: #00ff41;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+
+        .sat-btn.in-view {
+            border-color: #f59e0b;
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .sat-btn.visible {
+            border-color: #60a5fa;
+            color: #60a5fa;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-size: 10px;
+            color: #8b92b8;
+            text-transform: uppercase;
+        }
+
+        .control-group input, .control-group select, .control-group button {
+            padding: 6px 10px;
+            border-radius: 4px;
+            border: 1px solid #2d3561;
+            background: #0a0e27;
+            color: #fff;
+            font-size: 13px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        #quick-stats {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-left: auto;
+            padding-left: 20px;
+            font-size: 14px;
+        }
+
+        #quick-stats span {
+            white-space: nowrap;
+        }
+
+        #view-tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: #2d3561;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        #map-container {
+            height: calc(100vh - 180px);
+        }
+
+        #stats {
+            position: absolute;
+            top: 200px;
+            right: 20px;
+            background: rgba(10, 14, 39, 0.98);
+            padding: 20px;
+            border-radius: 12px;
+            min-width: 320px;
+            max-height: calc(100vh - 180px);
+            overflow-y: auto;
+            z-index: 1000;
+            border: 2px solid #2d3561;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+        }
+
+        #stats h3 {
+            margin-bottom: 15px;
+            color: #667eea;
+            font-size: 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #2d3561;
+            padding-bottom: 8px;
+        }
+
+        .stat-item {
+            padding: 12px;
+            margin: 8px 0;
+            background: #1a1f3a;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 500;
+            border-left: 3px solid #667eea;
+        }
+
+        .stat-item span {
+            color: #fff;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .sat-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .sat-item {
+            padding: 12px 14px;
+            margin: 8px 0;
+            background: #1a1f3a;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid #2d3561;
+        }
+
+        .sat-item:hover {
+            background: #2d3561;
+            transform: translateX(4px);
+            border-left-color: #667eea;
+        }
+
+        .sat-item.connected {
+            border-left: 4px solid #00ff41;
+            background: linear-gradient(90deg, rgba(0, 255, 65, 0.15) 0%, #1a1f3a 100%);
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.4);
+        }
+
+        .sat-item.in-view {
+            background: #1e2545;
+            border-left-color: #f59e0b;
+        }
+
+        .prn {
+            color: #fff;
+            font-weight: 700;
+            font-size: 16px;
+            text-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+        }
+
+        .sat-item small {
+            font-size: 13px;
+            color: #8b92b8;
+            font-weight: 500;
+        }
+
+        .snr-bar {
+            height: 6px;
+            background: #0a0e27;
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+            border: 1px solid #2d3561;
+        }
+
+        .snr-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f59e0b, #00ff41);
+            transition: width 0.3s;
+            box-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
+        }
+
+        #gps-status {
+            position: absolute;
+            top: 200px;
+            left: 20px;
+            background: rgba(26, 31, 58, 0.95);
+            padding: 15px;
+            border-radius: 8px;
+            min-width: 280px;
+            z-index: 1000;
+        }
+
+        #gps-status.connected {
+            border: 2px solid #00ff41;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+        }
+
+        #gps-status.disconnected {
+            border: 2px solid #f59e0b;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.active {
+            background: #00ff41;
+            box-shadow: 0 0 10px #00ff41;
+        }
+
+        .status-indicator.inactive {
+            background: #f59e0b;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes glow {
+            0%, 100% {
+                box-shadow: 0 0 5px #00ff41, 0 0 10px #00ff41, 0 0 15px #00ff41;
+            }
+            50% {
+                box-shadow: 0 0 10px #00ff41, 0 0 20px #00ff41, 0 0 30px #00ff41;
+            }
+        }
+
+        .leaflet-marker-pane .connected-sat {
+            filter: drop-shadow(0 0 8px #00ff41) drop-shadow(0 0 12px #00ff41);
+        }
+
+        .connection-line {
+            filter: drop-shadow(0 0 5px #00ff41);
+        }
+
+        .space-marker {
+            background: none;
+            border: none;
+        }
+
+        .space-marker div {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .space-marker div:hover {
+            transform: scale(1.3);
+        }
+
+        #nmea-log {
+            background: #0a0e27;
+            border: 1px solid #2d3561;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            margin-top: 10px;
+        }
+
+        #gps-input {
+            background: #1a1f3a;
+            padding: 15px;
+            margin: 10px;
+            border-radius: 8px;
+        }
+
+        #gps-input textarea {
+            width: 100%;
+            height: 100px;
+            background: #0a0e27;
+            color: #fff;
+            border: 1px solid #2d3561;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4ade80 0%, #10b981 100%) !important;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>Real-time Satellite Visualization with GPS Tracking</h1>
+    </div>
+
+    <div id="controls">
+        <div class="control-group">
+            <label>Your Location</label>
+            <button onclick="getLocation()">Get My Location</button>
+        </div>
+
+        <div class="control-group">
+            <label>Latitude</label>
+            <input type="number" id="lat" value="0" step="0.0001">
+        </div>
+
+        <div class="control-group">
+            <label>Longitude</label>
+            <input type="number" id="lon" value="0" step="0.0001">
+        </div>
+
+        <div class="control-group">
+            <label>GPS Module</label>
+            <button id="gps-connect-btn" onclick="connectGPS()">Connect GPS Module</button>
+        </div>
+
+        <div class="control-group">
+            <label>Manual</label>
+            <button onclick="toggleGPSInput()">Manual Import</button>
+        </div>
+
+        <div class="control-group">
+            <label>Help</label>
+            <button onclick="showGPSHelp()">GPS Setup</button>
+        </div>
+
+        <div class="control-group">
+            <label>Map Style</label>
+            <button id="dark-mode-btn" onclick="toggleDarkMode()">Dark Mode</button>
+        </div>
+
+        <div class="control-group">
+            <label>Panels</label>
+            <button id="gps-panel-btn" onclick="toggleGPSPanel()">Hide GPS Panel</button>
+        </div>
+
+        <div class="control-group">
+            <label>Stats</label>
+            <button id="stats-panel-btn" onclick="toggleStatsPanel()">Hide Overview</button>
+        </div>
+
+        <div id="quick-stats">
+            <span style="color: #fff; font-weight: 700;">Total: <span id="quick-total">0</span></span>
+            <span style="color: #f59e0b; font-weight: 700;">In View: <span id="quick-visible">0</span></span>
+            <span style="color: #00ff41; font-weight: 700;">Locked: <span id="quick-locked">0</span></span>
+        </div>
+    </div>
+
+    <div id="sat-bar">
+        <!-- Satellite buttons will be added here dynamically -->
+    </div>
+
+    <div id="gps-input" style="display: none;">
+        <h3>Paste NMEA GPS Data (GSV sentences)</h3>
+        <textarea id="nmea-data" placeholder="Paste NMEA sentences here (e.g., $GPGSV,...)"></textarea>
+        <button onclick="parseGPSData()">Parse & Visualize</button>
+        <button onclick="toggleGPSInput()">Close</button>
+    </div>
+
+    <div id="gps-status" class="disconnected">
+        <h3>
+            <span class="status-indicator inactive" id="status-led"></span>
+            GPS Module Status
+        </h3>
+        <div class="stat-item">Status: <span id="gps-status-text">Disconnected</span></div>
+        <div class="stat-item">Baud Rate: <span id="gps-baud">-</span></div>
+        <div class="stat-item">Fix: <span id="gps-fix">-</span></div>
+        <div class="stat-item">Sats Used: <span id="gps-sats-used">0</span></div>
+
+        <h4 style="margin-top: 15px; color: #667eea;">Live NMEA Stream</h4>
+        <div id="nmea-log"></div>
+    </div>
+
+    <div id="map-container"></div>
+
+    <div id="stats">
+        <h3>📊 Overview</h3>
+        <div class="stat-item">Total GPS: <span id="total-sats">0</span></div>
+        <div class="stat-item">Visible: <span id="visible-sats">0</span></div>
+        <div class="stat-item">Locked: <span id="connected-sats">0</span></div>
+
+        <h3 style="margin-top: 25px;">🔒 Connected Satellites</h3>
+        <div id="connected-list" class="sat-list"></div>
+
+        <h3 style="margin-top: 25px;">🛰️ All GPS Satellites</h3>
+        <div id="sat-list" class="sat-list"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
