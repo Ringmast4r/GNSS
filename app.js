@@ -262,8 +262,9 @@ function initMap() {
     });
 
     // Dark mode tile layer
-    darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    darkTileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        className: 'tile-dark',
+        attribution: '© OpenStreetMap contributors',
         maxZoom: 19,
         minZoom: 1
     });
@@ -276,8 +277,9 @@ function initMap() {
     });
 
     // Space mode - Dark map with space history overlays
-    spaceTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    spaceTileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        className: 'tile-dark',
+        attribution: '© OpenStreetMap contributors',
         maxZoom: 19,
         minZoom: 1
     });
