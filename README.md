@@ -13,7 +13,7 @@
 <br>
 
 [![Project](https://img.shields.io/badge/Project-GNSS_//_Tracker-1D7B7F?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Ringmast4r/GNSS)
-[![Version](https://img.shields.io/badge/Version-0.2.0-000000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Ringmast4r/GNSS/releases)
+[![Version](https://img.shields.io/badge/Version-0.3.0-000000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Ringmast4r/GNSS/releases)
 [![Live](https://img.shields.io/badge/Live-GitHub_Pages-1D7B7F?style=for-the-badge&logo=googlechrome&logoColor=white)](https://ringmast4r.github.io/GNSS/)
 [![License](https://img.shields.io/badge/License-CC_BY_4.0-000000?style=for-the-badge&logo=creativecommons&logoColor=white)](LICENSE)
 
@@ -38,6 +38,7 @@
 - **Next two hours.** Every rise and set across your mask, with the compass direction and the peak.
 - **Receiver.** Plug in a USB GPS or GNSS receiver and see what it actually hears: every constellation (GPS, GLONASS, Galileo, BeiDou, QZSS, NavIC, SBAS), C/N0 per satellite, the satellites in its fix, fix type and quality, PDOP / HDOP / VDOP, position, time and speed, and the raw NMEA. Satellites it hears turn grey on the sky plot; the ones in its fix turn solid.
 - **Replay.** Load a saved NMEA log or paste sentences to read a receiver you are not plugged into. Bad checksums are counted and shown in red.
+- **Server receiver.** Where the page is hosted next to a GPS, a bridge can publish `live/server.json` (the latest NMEA sentences, position rounded to 0.1 degree, about 11 km). The page then offers **Use the server's receiver** and reads it live, with nothing plugged in.
 
 ![The map: the point under each satellite, the selected satellite's ground track and coverage](docs/map.png)
 

@@ -439,12 +439,13 @@
       $(id).addEventListener('click', function () { if (serial.port) disconnect(); else connect(); });
     });
     $('btn-disconnect').addEventListener('click', disconnect);
+    ['btn-server', 'btn-server2'].forEach(function (id) { $(id).addEventListener('click', function () { if (feed.on) stopServer(); else startServer(); }); });
     if (!ok) {
       $('rx-line').textContent = 'Serial ports open in Chrome or Edge on a computer.';
       $('rx-msg').textContent = 'This browser cannot open serial ports. A saved log can still be read below.';
     }
     $('btn-use-rx').addEventListener('click', function () {
-      if (rx.fix.lat != null) setObserver(rx.fix.lat, rx.fix.lon, 'From the receiver', true);
+      if (rx.fix.lat != null) setObserver(rx.fix.lat, rx.fix.lon, feed.on ? 'From the server’s receiver, rounded' : 'From the receiver', true);
     });
     $('btn-log-copy').addEventListener('click', function () {
       var t = logLines.map(function (l) { return l.t; }).join('\n');
@@ -461,6 +462,7 @@
     });
   }
   async function connect() {
+    if (feed.on) stopServer();
     rxError = null;
     var baud = $('baud').value ? +$('baud').value : null;
     setRxMsg('Pick the receiver’s port in the browser’s list.', false);
@@ -486,6 +488,9 @@
     $('btn-connect2').disabled = on || !N.Serial.supported();
     $('btn-connect').disabled = !N.Serial.supported() && !on;
     $('btn-disconnect').disabled = !on;
+    $('btn-server').textContent = feed.on ? 'Stop the server’s receiver' : 'Use the server’s receiver';
+    $('btn-server2').textContent = feed.on ? 'Stop server receiver' : 'Server’s receiver';
+    $('btn-server').classList.toggle('on', feed.on); $('btn-server2').classList.toggle('on', feed.on);
   }
   function setRxMsg(t, bad) { var m = $('rx-msg'); m.textContent = t; m.classList.toggle('bad', !!bad); $('rx-line').classList.toggle('bad', !!bad); }
   function onLine(l) {
@@ -541,6 +546,59 @@
     renderLog();
   }
 
+  /* ---------------------------------------------------------------- the server's receiver
+     On the hub, a GPS plugged into the server is published by server/gnss-bridge.py as
+     live/server.json (the last NMEA sentences, position rounded to 0.1 degree). Polled once a
+     second and fed to the same parser as a USB receiver. The button shows only where it exists. */
+  var feed = { on: false, seq: 0, timer: null, status: null, age: null, device: '' };
+  async function probeServer() {
+    try {
+      var r = await fetch('live/server.json?t=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      var j = await r.json();
+      if (!j || j.v !== 1) return;
+      feed.device = j.device || 'the server';
+      ['btn-server', 'btn-server2', 'server-why'].forEach(function (id) { $(id).classList.remove('hidden'); });
+      if (get('gnss-source') === 'server') startServer();
+    } catch (e) { /* not on the hub */ }
+  }
+  async function startServer() {
+    if (serial && serial.port) await serial.disconnect();
+    rx.reset(); logLines = []; logDirty = true; rxError = null;
+    feed.on = true; feed.seq = 0; rxActive = true; rxLive = true; put('gnss-source', 'server');
+    pollServer(); clearInterval(feed.timer); feed.timer = setInterval(function () { if (!document.hidden) pollServer(); }, 1000);
+    syncRxButtons(); render(true);
+  }
+  function stopServer() {
+    feed.on = false; clearInterval(feed.timer); feed.timer = null; rxLive = false; put('gnss-source', '');
+    $('rx-line').textContent = 'Server receiver stopped; last picture kept'; $('rx-state').textContent = 'not connected';
+    setRxMsg('Stopped reading the server’s receiver.', false);
+    syncRxButtons(); render(true);
+  }
+  async function pollServer() {
+    try {
+      var r = await fetch('live/server.json?t=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      var j = await r.json(), now = Date.now();
+      if (j.seq < feed.seq) feed.seq = 0;                       // the bridge restarted
+      (j.lines || []).forEach(function (pair) { if (pair[0] > feed.seq) { onLine(pair[1]); feed.seq = pair[0]; } });
+      feed.status = j.status; feed.age = (now - j.updated) / 1000;
+      var silent = j.last_sentence ? (now - j.last_sentence) / 1000 : null;
+      var bad = feed.age > 15 || j.status !== 'reading' || (silent != null && silent > 15);
+      var what = j.status !== 'reading' ? 'the server reports: ' + j.status
+        : feed.age > 15 ? 'no update from the server for ' + Math.round(feed.age) + ' s'
+        : silent != null && silent > 15 ? 'the GPS has been silent for ' + Math.round(silent) + ' s'
+        : (j.baud || '?') + ' baud, live';
+      rxError = bad ? what : null;
+      $('rx-line').textContent = 'Server receiver: ' + what;
+      $('rx-state').textContent = bad ? 'server receiver, ' + what : 'server receiver, ' + (j.baud || '?') + ' baud';
+      setRxMsg(bad ? 'Server receiver: ' + what + '.' : 'Reading ' + feed.device + ' at ' + (j.baud || '?') + ' baud. Its position is rounded to ' + (j.rounded_deg || 0.1) + '°.', bad);
+    } catch (e) {
+      rxError = 'cannot read the server feed (' + e.message + ')';
+      setRxMsg('Server receiver: ' + rxError + '.', true);
+    }
+  }
+
   /* ---------------------------------------------------------------- selection */
   function select(prn) {
     S.sel = (S.sel === prn) ? null : prn;
@@ -584,6 +642,7 @@
     initFrame(); initSelection(); initReceiver(); syncRxButtons();
     await loadOrbits();
     initObserver();
+    probeServer();
     var t = get('gnss-tab'); if (t && t !== 'sky' && document.querySelector('[data-pane="' + t + '"]')) showTab(t);
     tick(true);
     setInterval(function () { if (!document.hidden) tick(false); }, 1000);

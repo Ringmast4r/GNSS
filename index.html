@@ -9,7 +9,7 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <link rel="icon" href="img/favicon.png" type="image/png">
   <link rel="stylesheet" href="vendor/leaflet.css">
-  <link rel="stylesheet" href="css/style.css?v=0.2.0">
+  <link rel="stylesheet" href="css/style.css?v=0.3.0">
   <script>
     (function () { try { if (localStorage.getItem('gnss-theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {} })();
   </script>
@@ -54,6 +54,7 @@
       <div class="rail-receiver">
         <div class="rail-label">Receiver</div>
         <button type="button" class="ghost wide" id="btn-connect">Connect GPS receiver</button>
+        <button type="button" class="ghost wide hidden" id="btn-server" title="A GPS plugged into the server, read live. Its position is rounded to about 11 km.">Use the server's receiver</button>
         <p class="rail-note" id="rx-line">Not connected</p>
       </div>
 
@@ -70,7 +71,7 @@
           <a class="link-btn hidden" id="hub-link" href="/globes/">&larr; Globe // Hub</a>
           <a class="link-btn" id="src-link" href="https://github.com/Ringmast4r/GNSS" target="_blank" rel="noopener">Source</a>
         </div>
-        <span>v0.2.0 &middot; Net Works Lab LLC</span>
+        <span>v0.3.0 &middot; Net Works Lab LLC</span>
       </div>
     </aside>
     <button type="button" class="rail-expand hidden" id="btn-show">Show</button>
@@ -174,6 +175,7 @@
                 </label>
                 <button type="button" class="ghost" id="btn-connect2">Connect</button>
                 <button type="button" class="ghost" id="btn-disconnect" disabled>Disconnect</button>
+                <button type="button" class="ghost hidden" id="btn-server2">Server's receiver</button>
               </div>
               <p class="rx-msg" id="rx-msg"></p>
               <table class="kv" id="rx-fix"><tbody></tbody></table>
@@ -211,6 +213,7 @@
               <li>Satellites the receiver hears turn grey on the sky plot; the ones in its fix turn solid. Compare them with the predicted positions to check the antenna and the receiver.</li>
             </ol>
             <p class="why">Serial ports open only in Chrome, Edge or Opera on a computer, over HTTPS.</p>
+            <p class="why hidden" id="server-why">On the Net Works hub a GPS is also plugged into the server. <b>Use the server's receiver</b> reads it live from here, without plugging anything in; its position is rounded to about 11 km before it leaves the server.</p>
           </div>
         </div>
 
@@ -241,6 +244,6 @@
   <script src="data/gps-ops-fallback.js"></script>
   <script src="js/orbits.js?v=0.2.0"></script>
   <script src="js/nmea.js?v=0.2.0"></script>
-  <script src="js/app.js?v=0.2.0"></script>
+  <script src="js/app.js?v=0.3.0"></script>
 </body>
 </html>
